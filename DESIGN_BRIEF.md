@@ -42,7 +42,6 @@ Attendants don't always know an item's current price, and the owner changes pric
 | F6 | Add / edit price / delete product | Must |
 | F7 | Image selection with preview in the add form | Must |
 | F8 | Loading (skeleton), empty and error states for every data view | Must |
-| F10 | Category filter, low-stock flag, last-updated stamp | Could |
 
 ### 1.6 Non-functional requirements
 - Loads < 2s on 3G-class connections; images lazy-loaded.

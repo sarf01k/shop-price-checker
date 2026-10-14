@@ -2,7 +2,7 @@ import { PackageSearch, RefreshCw, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ProductCard, { ProductCardSkeleton } from '@/components/ProductCard'
 
-const gridCls = 'grid grid-cols-1 gap-5 min-[540px]:grid-cols-2 min-[900px]:grid-cols-3 min-[1200px]:grid-cols-4'
+const gridCls = 'grid grid-cols-2 gap-3 sm:gap-5 min-[900px]:grid-cols-3 min-[1200px]:grid-cols-4'
 
 function Notice({ icon: Icon, title, children }) {
   return (

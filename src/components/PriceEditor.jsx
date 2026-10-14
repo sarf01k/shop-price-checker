@@ -28,13 +28,13 @@ export default function PriceEditor({ product, onSave }) {
       <Input
         type="number"
         min="0"
-        step="0.01"
+        step="0.10"
         inputMode="decimal"
         aria-label={`New price for ${product.name}`}
         aria-invalid={!valid}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="w-28"
+        className="h-9 w-24 rounded-full px-3 text-sm"
       />
       <Button type="submit" variant="ink" size="sm" disabled={!dirty || busy} aria-label={`Save price for ${product.name}`}>
         {busy ? <Loader2 className="animate-spin" /> : <Check />} Save

@@ -85,10 +85,10 @@ export default function ProductForm({ onCreated }) {
               name="price"
               label="Price"
               render={({ field }) => (
-                <Input type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" {...field} />
+                <Input type="number" min="0" step="0.10" inputMode="decimal" placeholder="0.00" {...field} />
               )}
             />
-            {text('size', 'Size', 'e.g. 5', undefined, 'number', { min: '0', step: 'any', inputMode: 'decimal' })}
+            {text('size', 'Size', 'e.g. 5', undefined, 'number', { min: '0', step: '0.10', inputMode: 'decimal' })}
             <FormField
               name="unit"
               label="Unit"

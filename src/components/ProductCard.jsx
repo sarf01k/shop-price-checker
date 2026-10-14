@@ -3,16 +3,21 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatPrice, formatSize } from '@/lib/format'
 
-export function ProductImage({ src, name, className = '', letterClass = 'text-6xl' }) {
+const FALLBACK_IMG = `${import.meta.env.BASE_URL}placeholder-box.png`
+
+export function ProductImage({ src, name, className = '' }) {
   return (
     <div className={`grid place-items-center overflow-hidden bg-primary ${className}`}>
-      {src ? (
-        <img src={src} alt={name} loading="lazy" className="size-full object-cover" />
-      ) : (
-        <span aria-hidden="true" className={`font-display text-background ${letterClass}`}>
-          {name?.[0]}
-        </span>
-      )}
+      <img
+        src={src || FALLBACK_IMG}
+        alt={name}
+        loading="lazy"
+        onError={(e) => {
+          e.currentTarget.onerror = null // avoid a loop if the fallback is missing too
+          e.currentTarget.src = FALLBACK_IMG
+        }}
+        className="size-full object-cover"
+      />
     </div>
   )
 }
@@ -36,7 +41,7 @@ export default function ProductCard({ product }) {
           </ul>
         )}
 
-        <div className="mt-auto self-end rounded-full bg-primary px-4 pb-0.5 pt-1 font-display text-[1.65rem] leading-none tracking-wide text-primary-foreground">
+        <div className="mt-auto w-full whitespace-nowrap rounded-full bg-primary px-3 pb-0.5 pt-1 text-center font-display text-xl leading-none tracking-wide text-primary-foreground sm:w-auto sm:self-end sm:px-4 sm:text-[1.65rem]">
           {formatPrice(price)}
         </div>
       </div>
