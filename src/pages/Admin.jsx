@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 import DeleteDialog from "@/components/DeleteDialog";
+import EditProductSheet from "@/components/EditProductSheet";
 import PriceEditor from "@/components/PriceEditor";
 import ProductForm from "@/components/ProductForm";
 import { ProductImage } from "@/components/ProductCard";
@@ -25,8 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+// BACKEND [Supabase]: useProducts loads the list via productsApi.list() (SELECT * FROM products ORDER BY name).
+// It also owns the local `products` state that the handlers below update after each save.
 import { useProducts } from "@/hooks/useProducts";
 import { formatPrice, formatSize } from "@/lib/format";
+// BACKEND [Supabase]: this file calls productsApi.updatePrice and productsApi.remove directly;
+// create/update/image calls live in ProductForm. Search for "BACKEND" to find each one.
 import { productsApi } from "@/services";
 
 const sortByName = (a, b) => a.name.localeCompare(b.name);
@@ -62,7 +67,13 @@ export default function Admin() {
     return q ? sorted.filter((p) => haystack(p).includes(q)) : sorted;
   }, [products, sortKey, q]);
 
+  // Local state only (no backend call): ProductForm already inserted the row via productsApi.create.
   const add = (row) => setProducts((ps) => [...ps, row].sort(sortByName));
+
+  // Local state only (no backend call): ProductForm already saved via productsApi.update and passes back the saved row.
+  /** Replace an edited item with the row the server returned (the sort memo re-orders it). */
+  const update = (row) =>
+    setProducts((ps) => ps.map((p) => (p.id === row.id ? row : p)));
 
   /** Optimistic price update with rollback. Rejects on failure so the editor can reset. */
   async function savePrice(product, price) {
@@ -71,6 +82,8 @@ export default function Admin() {
       ps.map((p) => (p.id === product.id ? { ...p, price } : p)),
     );
     try {
+      // BACKEND [Supabase DB]: UPDATE products SET price = ? WHERE id = ?. Returns the saved row.
+      // The optimistic update above is rolled back in the catch if this fails.
       const row = await productsApi.updatePrice(product.id, price);
       setProducts((ps) => ps.map((p) => (p.id === row.id ? row : p)));
       toast.success(`${product.name} is now ${formatPrice(price)}`);
@@ -84,6 +97,8 @@ export default function Admin() {
 
   async function remove(product) {
     try {
+      // BACKEND [Supabase DB]: DELETE FROM products WHERE id = ?. Owner only (RLS).
+      // Note: this does not delete the item's image from the `product-images` bucket.
       await productsApi.remove(product.id);
       setProducts((ps) => ps.filter((p) => p.id !== product.id));
       toast.success(`Deleted “${product.name}”`);
@@ -193,7 +208,7 @@ export default function Admin() {
                 />
               ) : (
                 <>
-                  {/* Desktop table */}
+                  {/* Desktop table: quick inline price edit, plus Edit (everything else) and Delete */}
                   <div className="hidden md:block">
                     <Table>
                       <TableHeader>
@@ -217,7 +232,6 @@ export default function Admin() {
                                 src={p.image_url}
                                 name={p.name}
                                 className="size-12 rounded-xl"
-                                letterClass="text-2xl"
                               />
                             </TableCell>
                             <TableCell>
@@ -236,11 +250,17 @@ export default function Admin() {
                                 onSave={(price) => savePrice(p, price)}
                               />
                             </TableCell>
-                            <TableCell className="text-right">
-                              <DeleteDialog
-                                product={p}
-                                onConfirm={() => remove(p)}
-                              />
+                            <TableCell>
+                              <div className="flex justify-end gap-2">
+                                <EditProductSheet
+                                  product={p}
+                                  onSaved={update}
+                                />
+                                <DeleteDialog
+                                  product={p}
+                                  onConfirm={() => remove(p)}
+                                />
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -248,8 +268,8 @@ export default function Admin() {
                     </Table>
                   </div>
 
-                  {/* Mobile stacked rows */}
-                  <ul className="grid grid-cols-1 gap-4 md:hidden">
+                  {/* Mobile rows: compact summary + Edit / Delete (price is changed in the Edit sheet) */}
+                  <ul className="grid grid-cols-1 gap-3 md:hidden">
                     {sortedProducts.map((p) => (
                       <li
                         key={p.id}
@@ -260,23 +280,21 @@ export default function Admin() {
                             src={p.image_url}
                             name={p.name}
                             className="size-14 shrink-0 rounded-xl"
-                            letterClass="text-2xl"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="line-clamp-2 wrap-break-word font-bold">
                               {p.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatSize(p.size, p.unit)}
                             </div>
                             <div className="font-display text-xl tracking-wide">
                               {formatPrice(p.price)}
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <PriceEditor
-                            key={`${p.id}-${p.price}`}
-                            product={p}
-                            onSave={(price) => savePrice(p, price)}
-                          />
+                        <div className="flex justify-end gap-2">
+                          <EditProductSheet product={p} onSaved={update} />
                           <DeleteDialog
                             product={p}
                             onConfirm={() => remove(p)}
