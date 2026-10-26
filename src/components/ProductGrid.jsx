@@ -26,6 +26,7 @@ export default function ProductGrid({
   error,
   onRetry,
   query,
+  filtersActive = false,
   onClear,
 }) {
   if (status === "loading") {
@@ -52,13 +53,18 @@ export default function ProductGrid({
   }
 
   if (products.length === 0) {
-    return query ? (
-      <Notice icon={PackageSearch} title={`No items match “${query}”`}>
+    return query || filtersActive ? (
+      <Notice
+        icon={PackageSearch}
+        title={query ? `No items match “${query}”` : "No items match your filters"}
+      >
         <p className="text-sm text-muted-foreground">
-          Try a different name or size.
+          {filtersActive
+            ? "Try a different name, size or filter."
+            : "Try a different name or size."}
         </p>
         <Button variant="outline" onClick={onClear}>
-          Clear search
+          {filtersActive ? "Clear filters" : "Clear search"}
         </Button>
       </Notice>
     ) : (

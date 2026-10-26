@@ -9,7 +9,9 @@ import { ProductImage } from "@/components/ProductCard";
 import ProductGrid from "@/components/ProductGrid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -41,6 +43,10 @@ const priceOrFloor = (p) => p.price ?? -1;
 const haystack = (p) =>
   `${p.name} ${p.size ?? ""} ${p.unit ?? ""}`.toLowerCase();
 
+// Incomplete-item filters: price is null when unpriced, image_url is '' when missing.
+const missingPrice = (p) => p.price == null;
+const missingImage = (p) => !p.image_url;
+
 const SORT_OPTIONS = {
   "name-asc": { label: "Name: A to Z", compare: sortByName },
   "name-desc": { label: "Name: Z to A", compare: (a, b) => sortByName(b, a) },
@@ -58,14 +64,28 @@ export default function Admin() {
   const { products, setProducts, status, error, reload } = useProducts();
   const [sortKey, setSortKey] = useState("name-asc");
   const [query, setQuery] = useState("");
+  const [noPrice, setNoPrice] = useState(false);
+  const [noImage, setNoImage] = useState(false);
   const rawQ = query.trim();
   const q = rawQ.toLowerCase();
+  const anyFilter = Boolean(rawQ) || noPrice || noImage;
 
-  // Sorted, then filtered by the search box. Name kept so the two .map() calls below don't change.
+  // Sorted, then filtered by the search box and the completeness toggles (each toggle narrows: AND).
   const sortedProducts = useMemo(() => {
     const sorted = [...products].sort(SORT_OPTIONS[sortKey].compare);
-    return q ? sorted.filter((p) => haystack(p).includes(q)) : sorted;
-  }, [products, sortKey, q]);
+    let list = sorted;
+    if (q) list = list.filter((p) => haystack(p).includes(q));
+    if (noPrice) list = list.filter(missingPrice);
+    if (noImage) list = list.filter(missingImage);
+    return list;
+  }, [products, sortKey, q, noPrice, noImage]);
+
+  /** Reset the search box and both completeness toggles. */
+  function clearFilters() {
+    setQuery("");
+    setNoPrice(false);
+    setNoImage(false);
+  }
 
   // Local state only (no backend call): ProductForm already inserted the row via productsApi.create.
   const add = (row) => setProducts((ps) => [...ps, row].sort(sortByName));
@@ -120,25 +140,47 @@ export default function Admin() {
             Item List{status === "ready" ? ` (${products.length})` : ""}
           </CardTitle>
           {status === "ready" && products.length > 1 && (
-            <div className="flex items-center gap-2 text-sm">
-              <label
-                htmlFor="item-sort"
-                className="font-medium text-muted-foreground"
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <div className="flex items-center gap-2 text-sm">
+                <label
+                  htmlFor="item-sort"
+                  className="font-medium text-muted-foreground"
+                >
+                  Sort by
+                </label>
+                <Select value={sortKey} onValueChange={setSortKey}>
+                  <SelectTrigger id="item-sort" className="h-9 w-45">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div
+                role="group"
+                aria-label="Filter incomplete items"
+                className="flex items-center gap-4 text-sm"
               >
-                Sort by
-              </label>
-              <Select value={sortKey} onValueChange={setSortKey}>
-                <SelectTrigger id="item-sort" className="h-9 w-45">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {Object.entries(SORT_OPTIONS).map(([key, { label }]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Label className="gap-2 font-medium text-muted-foreground">
+                  <Checkbox
+                    checked={noPrice}
+                    onCheckedChange={(v) => setNoPrice(Boolean(v))}
+                  />
+                  No price
+                </Label>
+                <Label className="gap-2 font-medium text-muted-foreground">
+                  <Checkbox
+                    checked={noImage}
+                    onCheckedChange={(v) => setNoImage(Boolean(v))}
+                  />
+                  No image
+                </Label>
+              </div>
             </div>
           )}
         </CardHeader>
@@ -189,7 +231,7 @@ export default function Admin() {
                 </Button>
               </form>
 
-              {rawQ && (
+              {anyFilter && (
                 <p
                   className="mb-4 text-sm font-medium text-muted-foreground"
                   aria-live="polite"
@@ -204,7 +246,8 @@ export default function Admin() {
                   products={[]}
                   status="ready"
                   query={rawQ}
-                  onClear={() => setQuery("")}
+                  filtersActive={noPrice || noImage}
+                  onClear={clearFilters}
                 />
               ) : (
                 <>
